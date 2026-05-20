@@ -1,0 +1,33 @@
+# ── Backend build artifacts ──────────────────────────────
+backend/loomdeploy
+backend/loomdeploy-backend
+backend/loomdeploy-backend.exe
+backend/*.db
+backend/data.db
+*.exe
+*.bin
+
+# ── Frontend ─────────────────────────────────────────────
+frontend/node_modules/
+frontend/.nuxt/
+frontend/.output/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# ── Environment / secrets ────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Traefik ──────────────────────────────────────────────
+letsencrypt/
+
+# ── OS ───────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── IDE ──────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp

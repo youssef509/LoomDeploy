@@ -1,0 +1,62 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill in as much detail as possible.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: When I click "Deploy", the build starts but never finishes...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce the issue?
+      placeholder: |
+        1. Go to Projects
+        2. Click Deploy
+        3. See error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or screenshots
+      description: Paste any build logs, error messages, or attach screenshots.
+      render: shell
+
+  - type: input
+    id: version
+    attributes:
+      label: LoomDeploy version / commit
+      placeholder: main @ abc1234
+
+  - type: input
+    id: os
+    attributes:
+      label: Server OS
+      placeholder: Ubuntu 22.04
+
+  - type: input
+    id: docker
+    attributes:
+      label: Docker version
+      placeholder: Docker 24.0.5

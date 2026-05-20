@@ -1,0 +1,76 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+@import "tailwindcss" theme(static);
+@import "@nuxt/ui";
+
+@theme static {
+  --font-sans: 'Inter', system-ui, sans-serif;
+
+  /* ── LoomDeploy Brand Blue ── */
+  --color-blue-50:  #EAF4FF;
+  --color-blue-100: #D4E8FF;
+  --color-blue-200: #A9D2FF;
+  --color-blue-300: #7DBCFF;
+  --color-blue-400: #1C94FF;
+  --color-blue-500: #0083FF;
+  --color-blue-600: #006FE0;
+  --color-blue-700: #0059B8;
+  --color-blue-800: #004391;
+  --color-blue-900: #002D6A;
+  --color-blue-950: #001640;
+}
+
+/* ── LoomDeploy Dark Theme — neutral zinc, no blue tint ─────── */
+.dark {
+  /* Backgrounds — clearly separated layers */
+  --ui-bg:           #0C0C0D;   /* Main area: near-black neutral  */
+  --ui-bg-elevated:  #141416;   /* Sidebar / raised panels        */
+  --ui-bg-muted:     #1A1A1D;   /* Hover states                   */
+  --ui-bg-accented:  #242428;   /* Cards, inputs, selected rows   */
+  --ui-bg-inverted:  #F2F2F2;
+
+  /* Text — comfortable contrast, not eye-straining white */
+  --ui-text-highlighted: #F0F0F0;
+  --ui-text:             #9B9BA6;
+  --ui-text-muted:       #6A6A74;
+  --ui-text-dimmed:      #47474F;
+  --ui-text-toned:       #9B9BA6;
+  --ui-text-inverted:    #0C0C0D;
+
+  /* Borders — clearly visible, not invisible */
+  --ui-border:          #242428;
+  --ui-border-muted:    #1A1A1D;
+  --ui-border-accented: #363640;
+  --ui-border-inverted: #F0F0F0;
+}
+
+/* ── LoomDeploy Light Theme — off-white, calm, not blinding ─── */
+:root:not(.dark) {
+  /* Backgrounds */
+  --ui-bg:           #F3F3F5;   /* Subtle off-white content area  */
+  --ui-bg-elevated:  #FFFFFF;   /* Pure white cards / panels      */
+  --ui-bg-muted:     #EAEAEC;   /* Hover bg                       */
+  --ui-bg-accented:  #DFDFE2;   /* Selected / active              */
+  --ui-bg-inverted:  #18181B;
+
+  /* Text */
+  --ui-text-highlighted: #18181B;
+  --ui-text:             #52525B;
+  --ui-text-muted:       #71717A;
+  --ui-text-dimmed:      #A1A1AA;
+  --ui-text-toned:       #3F3F46;
+  --ui-text-inverted:    #F3F3F5;
+
+  /* Borders */
+  --ui-border:          #E2E2E6;
+  --ui-border-muted:    #EBEBED;
+  --ui-border-accented: #CACACE;
+  --ui-border-inverted: #18181B;
+}
+
+/* ── Global text rendering ──────────────────────────────────── */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv11", "ss01";
+}

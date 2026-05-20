@@ -1,0 +1,56 @@
+services:
+  backend:
+    build: ./backend
+    container_name: loomdeploy-backend
+    restart: unless-stopped
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - DB_PATH=${DB_PATH:-/var/lib/loomdeploy/data.db}
+      - APP_DOMAIN=${APP_DOMAIN}
+      - GITHUB_APP_ID=${GITHUB_APP_ID:-}
+      - GITHUB_APP_NAME=${GITHUB_APP_NAME:-}
+      - GITHUB_APP_CLIENT_ID=${GITHUB_APP_CLIENT_ID:-}
+      - GITHUB_APP_CLIENT_SECRET=${GITHUB_APP_CLIENT_SECRET:-}
+      - GITHUB_APP_PRIVATE_KEY=${GITHUB_APP_PRIVATE_KEY:-}
+    ports:
+      - "127.0.0.1:18080:8080"
+    volumes:
+      - loomdeploy-data:/var/lib/loomdeploy
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - paas_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=paas_network"
+      - "traefik.http.routers.loomdeploy-api.rule=Host(`${APP_DOMAIN}`) && PathPrefix(`/api/`)"
+      - "traefik.http.routers.loomdeploy-api.entrypoints=websecure"
+      - "traefik.http.routers.loomdeploy-api.tls=true"
+      - "traefik.http.routers.loomdeploy-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.loomdeploy-api.loadbalancer.server.port=8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        BACKEND_URL: http://backend:8080
+    container_name: loomdeploy-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - paas_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=paas_network"
+      - "traefik.http.routers.loomdeploy.rule=Host(`${APP_DOMAIN}`)"
+      - "traefik.http.routers.loomdeploy.entrypoints=websecure"
+      - "traefik.http.routers.loomdeploy.tls=true"
+      - "traefik.http.routers.loomdeploy.tls.certresolver=letsencrypt"
+      - "traefik.http.services.loomdeploy.loadbalancer.server.port=3000"
+
+volumes:
+  loomdeploy-data:
+
+networks:
+  paas_network:
+    external: true
