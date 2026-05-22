@@ -38,6 +38,16 @@ const links = [[{
     onSelect: () => { open.value = false }
   }]
 }], [{
+  label: 'Docs',
+  icon: 'i-lucide-book-open',
+  to: 'https://docs.loomdeploy.com',
+  target: '_blank'
+}, {
+  label: 'Website',
+  icon: 'i-lucide-globe',
+  to: 'https://loomdeploy.com',
+  target: '_blank'
+}, {
   label: 'GitHub',
   icon: 'i-simple-icons-github',
   to: 'https://github.com/youssef509/loomdeploy',
