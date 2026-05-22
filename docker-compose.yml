@@ -7,6 +7,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - DB_PATH=${DB_PATH:-/var/lib/loomdeploy/data.db}
       - APP_DOMAIN=${APP_DOMAIN}
+      - BASE_DOMAIN=${BASE_DOMAIN:-${APP_DOMAIN}}
       - GITHUB_APP_ID=${GITHUB_APP_ID:-}
       - GITHUB_APP_NAME=${GITHUB_APP_NAME:-}
       - GITHUB_APP_CLIENT_ID=${GITHUB_APP_CLIENT_ID:-}

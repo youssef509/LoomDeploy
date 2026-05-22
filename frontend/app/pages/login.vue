@@ -52,16 +52,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 <template>
   <div class="w-full max-w-sm px-4">
     <div class="text-center mb-8">
-      <div class="flex items-center justify-center gap-2.5 mb-6">
-        <div class="size-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md shadow-blue-500/30">
-          <svg width="19" height="19" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="1.5" y="1.5" width="5.3" height="5.3" rx="1.3" fill="white"/>
-            <rect x="8.2" y="1.5" width="5.3" height="5.3" rx="1.3" fill="white" fill-opacity="0.65"/>
-            <rect x="1.5" y="8.2" width="5.3" height="5.3" rx="1.3" fill="white" fill-opacity="0.65"/>
-            <rect x="8.2" y="8.2" width="5.3" height="5.3" rx="1.3" fill="white" fill-opacity="0.35"/>
-          </svg>
-        </div>
-        <span class="text-xl font-bold text-highlighted tracking-tight">LoomDeploy</span>
+      <div class="flex items-center justify-center mb-4">
+        <img src="/logo.png" alt="LoomDeploy" class="h-16 w-auto" />
       </div>
       <h1 class="text-2xl font-bold text-highlighted">Welcome back</h1>
       <p class="text-sm text-muted mt-1">Sign in to your LoomDeploy instance</p>
