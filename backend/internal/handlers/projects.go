@@ -555,7 +555,7 @@ func startDeployGoroutine(dep models.Deployment, project models.Project, envVars
 					if framework == "" {
 						publish("ERROR: No Dockerfile found and framework could not be auto-detected.\n")
 						publish("Add a Dockerfile to your repo root, or set a custom Dockerfile in project Settings → Dockerfile Override.\n")
-						publish("Supported auto-detect: Node.js (package.json), Python (requirements.txt/pyproject.toml), Go (go.mod), Ruby (Gemfile), PHP (composer.json), Java Maven (pom.xml), Java Gradle (build.gradle).\n")
+						publish("Supported auto-detect: Node.js (package.json), Python (requirements.txt/pyproject.toml), Go (go.mod), Ruby (Gemfile), PHP (composer.json), Java Maven (pom.xml), Java Gradle (build.gradle), Static HTML (index.html — served via nginx on port 80).\n")
 						return
 					}
 					publish(fmt.Sprintf("No Dockerfile found — auto-detected framework: %s. Injecting template...\n", framework))

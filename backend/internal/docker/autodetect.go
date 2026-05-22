@@ -30,6 +30,8 @@ func DetectFramework(dir string) string {
 		return "java-maven"
 	case has("build.gradle") || has("build.gradle.kts"):
 		return "java-gradle"
+	case has("index.html"):
+		return "static"
 	default:
 		return ""
 	}
@@ -417,6 +419,13 @@ func DockerfileTemplate(framework string, dir string, port int) string {
 			"ENV PORT=" + p + "\n" +
 			"EXPOSE " + p + "\n" +
 			"CMD [\"java\", \"-jar\", \"app.jar\"]\n"
+
+	case "static":
+		return "FROM nginx:alpine\n" +
+			"COPY . /usr/share/nginx/html\n" +
+			"RUN printf 'server {\\n    listen 80;\\n    root /usr/share/nginx/html;\\n    index index.html;\\n    try_files $uri $uri/ /index.html;\\n}\\n' > /etc/nginx/conf.d/default.conf\n" +
+			"EXPOSE 80\n" +
+			"CMD [\"nginx\", \"-g\", \"daemon off;\"]\n"
 
 	default:
 		return ""
