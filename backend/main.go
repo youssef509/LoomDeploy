@@ -111,6 +111,9 @@ func main() {
 	// Public — no auth (secret in URL is the auth token)
 	r.POST("/api/webhooks/:secret", handlers.HandleWebhook)
 
+	// GitHub App push events (HMAC-verified, no auth header needed)
+	r.POST("/api/webhooks/github-app", handlers.HandleGitHubAppWebhook)
+
 	// GitHub App public callbacks (under /api/ so Traefik routes them to the backend)
 	r.GET("/api/github/app/manifest-callback", handlers.ManifestCallback)
 	r.GET("/api/github/app/install-callback", handlers.GitHubInstallCallback)

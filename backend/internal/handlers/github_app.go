@@ -175,7 +175,7 @@ func GetManifest(c *gin.Context) {
 		"description": "LoomDeploy self-hosted PaaS",
 		"hook_attributes": gin.H{
 			"url":    base + "/api/webhooks/github-app",
-			"active": false,
+			"active": true,
 		},
 		"redirect_url":     base + "/api/github/app/manifest-callback",
 		"setup_url":        base + "/api/github/app/install-callback",
@@ -186,7 +186,7 @@ func GetManifest(c *gin.Context) {
 			"contents": "read",
 			"metadata": "read",
 		},
-		"default_events": []string{},
+		"default_events": []string{"push"},
 	}
 	c.JSON(http.StatusOK, manifest)
 }
