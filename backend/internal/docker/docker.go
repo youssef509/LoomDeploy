@@ -18,6 +18,7 @@ ContainerPort int
 EnvVars       []string
 CPULimit      float64
 MemoryLimitMB int64
+VolumeMount   string   // container path to persist (host path auto-derived)
 }
 
 func TagForProject(projectID string) string {

@@ -19,6 +19,71 @@ const isNewModalOpen = ref(!!route.query.new)
 const deleteConfirmOpen = ref(false)
 const projectToDelete = ref<Project | null>(null)
 
+// ── Track / step state ──────────────────────────────────────────────────────
+const track = ref<null | 'app' | 'service'>(null)
+const serviceStep = ref<'grid' | 'form'>('grid')
+
+// ── Service templates ────────────────────────────────────────────────────────
+interface EnvVarField { key: string; label: string; placeholder: string; required: boolean; secret: boolean; default?: string }
+interface ServiceTemplate { id: string; name: string; description: string; icon: string; category: string; docker_image: string; versions: string[]; default_port: number; volume_mount?: string; env_var_fields: EnvVarField[] }
+
+const templates = ref<ServiceTemplate[]>([])
+const selectedTemplate = ref<ServiceTemplate | null>(null)
+const serviceImage = ref('')
+const serviceVolumeEnabled = ref(true)
+const serviceName = ref('')
+const serviceEnvVars = ref<{ key: string; value: string; secret: boolean }[]>([])
+const serviceCreating = ref(false)
+
+async function loadTemplates() {
+  if (templates.value.length) return
+  try { templates.value = await $fetch<ServiceTemplate[]>('/api/services/templates') }
+  catch { templates.value = [] }
+}
+
+function selectTemplate(t: ServiceTemplate) {
+  selectedTemplate.value = t
+  serviceImage.value = t.docker_image
+  serviceName.value = t.name.toLowerCase().replace(/\s+/g, '-')
+  serviceEnvVars.value = t.env_var_fields.map(f => ({ key: f.key, value: f.default ?? '', secret: f.secret }))
+  serviceStep.value = 'form'
+}
+
+async function submitService() {
+  if (!selectedTemplate.value) return
+  serviceCreating.value = true
+  try {
+    const auth = useAuthStore()
+    const res = await $fetch<{ project: Project }>('/api/services', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${auth.token}` },
+      body: {
+        template_id: selectedTemplate.value.id,
+        name: serviceName.value,
+        image: serviceImage.value,
+        volume_enabled: serviceVolumeEnabled.value,
+        env_vars: serviceEnvVars.value.filter(e => e.key && e.value).map(e => ({ key: e.key, value: e.value }))
+      }
+    })
+    toast.add({ title: `${selectedTemplate.value.name} deployed!`, color: 'success' })
+    isNewModalOpen.value = false
+    refresh()
+    router.push(`/projects/${res.project.id}`)
+  } catch (err: any) {
+    toast.add({ title: 'Deploy failed', description: err?.data?.message, color: 'error' })
+  } finally {
+    serviceCreating.value = false
+  }
+}
+
+const categoryColors: Record<string, string> = {
+  database: 'text-blue-400',
+  cache: 'text-red-400',
+  cms: 'text-purple-400',
+  storage: 'text-amber-400'
+}
+
+// ── App (git) state ──────────────────────────────────────────────────────────
 const ghRepos = ref<GitHubRepo[]>([])
 const ghReposLoading = ref(false)
 const sourceMode = ref<'github' | 'git_url' | 'upload'>('github')
@@ -45,8 +110,12 @@ watch(sourceMode, (mode) => {
 
 watch(isNewModalOpen, (open) => {
   if (open) {
+    track.value = null
+    serviceStep.value = 'grid'
+    selectedTemplate.value = null
     resetNewProject()
     sourceMode.value = ghConnected.value ? 'github' : 'git_url'
+    loadTemplates()
     if (ghConnected.value && ghRepos.value.length === 0) loadGhRepos()
   }
 })
@@ -314,44 +383,76 @@ const statusTextClass = (status?: string) => {
   </UDashboardPanel>
 
   <!-- Create project modal -->
-  <UModal v-model:open="isNewModalOpen" title="New Project" :ui="{ body: 'space-y-0' }">
+  <UModal
+    v-model:open="isNewModalOpen"
+    :title="track === null ? 'New Project' : track === 'app' ? 'Deploy App' : (serviceStep === 'grid' ? 'Choose a Service' : (selectedTemplate?.name ?? 'Configure Service'))"
+    :ui="{ body: 'space-y-0', content: track === 'service' && serviceStep === 'grid' ? 'max-w-2xl' : 'max-w-lg' }"
+  >
     <template #body>
-      <UForm :schema="schema" :state="newProject" class="p-4 space-y-4" @submit="onCreateProject">
 
-        <!-- Source picker -->
-        <div class="grid grid-cols-3 gap-2">
+      <!-- ── Step 0: Track selector ── -->
+      <div v-if="track === null" class="p-5 space-y-4">
+        <p class="text-sm text-muted">What do you want to deploy?</p>
+        <div class="grid grid-cols-2 gap-3">
           <button
-            type="button"
-            class="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-sm transition-all"
-            :class="sourceMode === 'github' ? 'border-primary bg-primary/10' : 'border-default hover:border-primary/40'"
-            @click="sourceMode = 'github'"
+            class="flex flex-col items-start gap-3 p-5 rounded-2xl border-2 border-default hover:border-primary/50 hover:bg-primary/5 transition-all text-left group"
+            @click="track = 'app'"
           >
+            <div class="p-2.5 rounded-xl bg-primary/10 border border-primary/20 group-hover:bg-primary/15">
+              <UIcon name="i-lucide-git-branch" class="size-5 text-primary" />
+            </div>
+            <div>
+              <p class="font-semibold text-sm text-highlighted">Deploy App</p>
+              <p class="text-xs text-muted mt-0.5">From GitHub or any Git repository</p>
+            </div>
+          </button>
+          <button
+            class="flex flex-col items-start gap-3 p-5 rounded-2xl border-2 border-default hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all text-left group"
+            @click="track = 'service'"
+          >
+            <div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 group-hover:bg-emerald-500/15">
+              <UIcon name="i-lucide-database" class="size-5 text-emerald-400" />
+            </div>
+            <div>
+              <p class="font-semibold text-sm text-highlighted">Deploy Service</p>
+              <p class="text-xs text-muted mt-0.5">One-click databases, caches & tools</p>
+            </div>
+          </button>
+        </div>
+        <div class="flex justify-end pt-1">
+          <UButton variant="ghost" color="neutral" @click="isNewModalOpen = false">Cancel</UButton>
+        </div>
+      </div>
+
+      <!-- ── Track: App (git) ── -->
+      <UForm v-else-if="track === 'app'" :schema="schema" :state="newProject" class="p-4 space-y-4" @submit="onCreateProject">
+        <div class="flex items-center gap-2 mb-1">
+          <UButton size="xs" variant="ghost" color="neutral" icon="i-lucide-arrow-left" @click="track = null" />
+          <span class="text-xs text-muted">Back</span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <button type="button" class="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-sm transition-all"
+            :class="sourceMode === 'github' ? 'border-primary bg-primary/10' : 'border-default hover:border-primary/40'"
+            @click="sourceMode = 'github'">
             <UIcon name="i-simple-icons-github" class="size-5" :class="sourceMode === 'github' ? 'text-primary' : 'text-muted'" />
             <span class="font-medium text-xs" :class="sourceMode === 'github' ? 'text-primary' : 'text-highlighted'">GitHub</span>
             <UBadge :color="ghConnected ? 'success' : 'neutral'" size="xs" variant="subtle">{{ ghConnected ? 'Connected' : 'Not connected' }}</UBadge>
           </button>
-          <button
-            type="button"
-            class="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-sm transition-all"
+          <button type="button" class="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-sm transition-all"
             :class="sourceMode === 'git_url' ? 'border-primary bg-primary/10' : 'border-default hover:border-primary/40'"
-            @click="sourceMode = 'git_url'"
-          >
+            @click="sourceMode = 'git_url'">
             <UIcon name="i-lucide-link" class="size-5" :class="sourceMode === 'git_url' ? 'text-primary' : 'text-muted'" />
             <span class="font-medium text-xs" :class="sourceMode === 'git_url' ? 'text-primary' : 'text-highlighted'">Git URL</span>
             <span class="text-xs text-muted">GitLab, Gitea…</span>
           </button>
-          <button
-            type="button"
-            disabled
-            class="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-dashed border-default text-muted opacity-50 cursor-not-allowed"
-          >
+          <button type="button" disabled class="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-dashed border-default text-muted opacity-50 cursor-not-allowed">
             <UIcon name="i-lucide-upload" class="size-5" />
             <span class="font-medium text-xs">Upload</span>
             <UBadge color="neutral" size="xs" variant="subtle">Soon</UBadge>
           </button>
         </div>
 
-        <!-- GitHub: repo picker or not-connected notice -->
         <template v-if="sourceMode === 'github'">
           <div v-if="ghConnected" class="space-y-1.5">
             <label class="text-sm font-medium text-highlighted">Repository</label>
@@ -359,14 +460,10 @@ const statusTextClass = (status?: string) => {
               <UIcon name="i-lucide-loader-circle" class="size-4 animate-spin" /> Loading repos…
             </div>
             <div v-else class="max-h-44 overflow-y-auto rounded-xl border border-default divide-y divide-default">
-              <button
-                v-for="repo in ghRepos"
-                :key="repo.full_name"
-                type="button"
+              <button v-for="repo in ghRepos" :key="repo.full_name" type="button"
                 class="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-elevated transition-colors text-left"
                 :class="newProject.repository_url === repo.clone_url ? 'bg-primary/10 text-primary' : ''"
-                @click="selectRepo(repo)"
-              >
+                @click="selectRepo(repo)">
                 <span class="flex items-center gap-2">
                   <UIcon :name="repo.private ? 'i-lucide-lock' : 'i-lucide-book-open'" class="size-3.5 text-muted shrink-0" />
                   {{ repo.full_name }}
@@ -380,45 +477,116 @@ const statusTextClass = (status?: string) => {
             <UIcon name="i-lucide-plug-zap" class="size-4 text-muted shrink-0 mt-0.5" />
             <div>
               <p class="text-sm font-medium">GitHub App not connected</p>
-              <p class="text-xs text-muted mt-0.5">
-                Go to
-                <NuxtLink to="/settings/source-control" class="text-primary underline" @click="isNewModalOpen = false">Source Control</NuxtLink>
-                to connect GitHub and pick repos.
-              </p>
+              <p class="text-xs text-muted mt-0.5">Go to <NuxtLink to="/settings/source-control" class="text-primary underline" @click="isNewModalOpen = false">Source Control</NuxtLink> to connect.</p>
             </div>
           </div>
         </template>
 
-        <!-- Git URL -->
         <UFormField v-if="sourceMode === 'git_url'" label="Repository URL" name="repository_url">
           <UInput v-model="newProject.repository_url" placeholder="https://github.com/user/repo" class="w-full" />
         </UFormField>
-
-        <!-- Branch -->
         <UFormField v-if="sourceMode !== 'upload'" label="Branch" name="branch" hint="Type any branch name or pick a common one">
-          <UInputMenu
-            v-model="newProject.branch"
-            :items="['main', 'master', 'develop', 'dev', 'staging', 'production']"
-            placeholder="main"
-            class="w-full"
-            create-option
-          />
+          <UInputMenu v-model="newProject.branch" :items="['main', 'master', 'develop', 'dev', 'staging', 'production']" placeholder="main" class="w-full" create-option />
         </UFormField>
-
-        <!-- Core config -->
         <UFormField label="Project Name" name="name">
           <UInput v-model="newProject.name" placeholder="my-awesome-app" class="w-full" />
         </UFormField>
-
         <UFormField label="Container Port" name="container_port">
           <UInput v-model="newProject.container_port" type="number" placeholder="3000" class="w-full" />
         </UFormField>
-
         <div class="flex justify-end gap-2 pt-2">
           <UButton variant="ghost" color="neutral" @click="isNewModalOpen = false">Cancel</UButton>
           <UButton type="submit" :loading="creating" icon="i-lucide-rocket">Create Project</UButton>
         </div>
       </UForm>
+
+      <!-- ── Track: Service — template grid ── -->
+      <div v-else-if="track === 'service' && serviceStep === 'grid'" class="p-5 space-y-4">
+        <div class="flex items-center gap-2">
+          <UButton size="xs" variant="ghost" color="neutral" icon="i-lucide-arrow-left" @click="track = null" />
+          <span class="text-xs text-muted">Back</span>
+        </div>
+        <div v-if="!templates.length" class="flex items-center justify-center py-10">
+          <UIcon name="i-lucide-loader-circle" class="size-6 animate-spin text-muted" />
+        </div>
+        <div v-else class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <button
+            v-for="t in templates"
+            :key="t.id"
+            class="flex flex-col items-center gap-2 p-4 rounded-xl border border-default hover:border-primary/40 hover:bg-elevated transition-all text-center group"
+            @click="selectTemplate(t)"
+          >
+            <div class="p-2 rounded-lg bg-elevated group-hover:bg-primary/10 transition-colors">
+              <UIcon :name="t.icon" class="size-6" :class="categoryColors[t.category] ?? 'text-muted'" />
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-highlighted">{{ t.name }}</p>
+              <p class="text-xs text-muted leading-tight mt-0.5">{{ t.description }}</p>
+            </div>
+          </button>
+        </div>
+        <div class="flex justify-end">
+          <UButton variant="ghost" color="neutral" @click="isNewModalOpen = false">Cancel</UButton>
+        </div>
+      </div>
+
+      <!-- ── Track: Service — configure form ── -->
+      <div v-else-if="track === 'service' && serviceStep === 'form' && selectedTemplate" class="p-5 space-y-4">
+        <div class="flex items-center gap-2">
+          <UButton size="xs" variant="ghost" color="neutral" icon="i-lucide-arrow-left" @click="serviceStep = 'grid'" />
+          <span class="text-xs text-muted">Back to templates</span>
+        </div>
+
+        <!-- Template header -->
+        <div class="flex items-center gap-3 p-3 rounded-xl bg-elevated/60 border border-default">
+          <UIcon :name="selectedTemplate.icon" class="size-7" :class="categoryColors[selectedTemplate.category] ?? 'text-muted'" />
+          <div>
+            <p class="font-semibold text-sm text-highlighted">{{ selectedTemplate.name }}</p>
+            <p class="text-xs text-muted">{{ selectedTemplate.description }}</p>
+          </div>
+        </div>
+
+        <!-- Name + image version -->
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-highlighted">Service Name</label>
+          <UInput v-model="serviceName" :placeholder="`my-${selectedTemplate.id}`" class="w-full" />
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-highlighted">Image Version</label>
+          <USelectMenu v-model="serviceImage" :items="selectedTemplate.versions" class="w-full" />
+        </div>
+
+        <!-- Env var fields -->
+        <div v-if="serviceEnvVars.length" class="space-y-3">
+          <label class="text-sm font-medium text-highlighted">Configuration</label>
+          <div v-for="(ev, i) in serviceEnvVars" :key="ev.key" class="space-y-1">
+            <label class="text-xs text-muted font-mono">{{ ev.key }}</label>
+            <UInput
+              v-model="serviceEnvVars[i].value"
+              :type="ev.secret ? 'password' : 'text'"
+              :placeholder="selectedTemplate.env_var_fields[i]?.placeholder ?? ''"
+              class="w-full"
+            />
+          </div>
+        </div>
+
+        <!-- Volume toggle -->
+        <div v-if="selectedTemplate.volume_mount" class="flex items-center justify-between p-3 rounded-xl bg-elevated/60 border border-default">
+          <div>
+            <p class="text-sm font-medium text-highlighted">Persistent Storage</p>
+            <p class="text-xs text-muted">Data survives container restarts</p>
+          </div>
+          <UToggle v-model="serviceVolumeEnabled" />
+        </div>
+
+        <div class="flex justify-end gap-2 pt-1">
+          <UButton variant="ghost" color="neutral" @click="isNewModalOpen = false">Cancel</UButton>
+          <UButton :loading="serviceCreating" icon="i-lucide-rocket" color="success" @click="submitService">
+            Deploy {{ selectedTemplate.name }}
+          </UButton>
+        </div>
+      </div>
+
     </template>
   </UModal>
 

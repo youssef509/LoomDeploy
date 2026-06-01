@@ -3,11 +3,13 @@
 package docker
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/docker/docker/api/types"
@@ -98,9 +100,17 @@ func RunContainer(ctx context.Context, cfg RunConfig) (string, error) {
 		resources.Memory = cfg.MemoryLimitMB * 1024 * 1024
 	}
 
+	hostConfig := &container.HostConfig{RestartPolicy: container.RestartPolicy{Name: "unless-stopped"}, Resources: resources}
+	if cfg.VolumeMount != "" {
+		hostPath := fmt.Sprintf("/var/lib/loomdeploy/volumes/%s", cfg.ProjectID)
+		if err := os.MkdirAll(hostPath, 0755); err == nil {
+			hostConfig.Binds = []string{fmt.Sprintf("%s:%s", hostPath, cfg.VolumeMount)}
+		}
+	}
+
 	resp, err := Client.ContainerCreate(ctx,
 		&container.Config{Image: cfg.ImageTag, Env: cfg.EnvVars, Labels: labels},
-		&container.HostConfig{RestartPolicy: container.RestartPolicy{Name: "unless-stopped"}, Resources: resources},
+		hostConfig,
 		&dockernetwork.NetworkingConfig{EndpointsConfig: map[string]*dockernetwork.EndpointSettings{PaasNetwork: {}}},
 		nil,
 		containerName,
@@ -112,6 +122,32 @@ func RunContainer(ctx context.Context, cfg RunConfig) (string, error) {
 		return "", fmt.Errorf("container start failed: %w", err)
 	}
 	return resp.ID, nil
+}
+
+func PullImage(ctx context.Context, ref string, publish func(string)) error {
+	out, err := Client.ImagePull(ctx, ref, image.PullOptions{})
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	scanner := bufio.NewScanner(out)
+	for scanner.Scan() {
+		var msg map[string]json.RawMessage
+		if json.Unmarshal(scanner.Bytes(), &msg) == nil {
+			if statusRaw, ok := msg["status"]; ok {
+				var s string
+				_ = json.Unmarshal(statusRaw, &s)
+				if idRaw, ok2 := msg["id"]; ok2 {
+					var id string
+					_ = json.Unmarshal(idRaw, &id)
+					publish(s + " " + id + "\n")
+				} else {
+					publish(s + "\n")
+				}
+			}
+		}
+	}
+	return scanner.Err()
 }
 
 func StopAndRemoveContainer(ctx context.Context, nameOrID string) {
