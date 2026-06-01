@@ -189,13 +189,6 @@ func RemoveImage(ctx context.Context, imageTag string) {
 	}
 }
 
-type ContainerUsage struct {
-	CPUPercent    float64 `json:"cpu_percent"`
-	MemoryUsageMB float64 `json:"memory_usage_mb"`
-	MemoryLimitMB float64 `json:"memory_limit_mb"`
-	MemoryPercent float64 `json:"memory_percent"`
-}
-
 func GetContainerStats(ctx context.Context, containerID string) (*ContainerUsage, error) {
 	resp, err := Client.ContainerStats(ctx, containerID, false)
 	if err != nil {
