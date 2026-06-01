@@ -111,6 +111,10 @@ func main() {
 	// Public — no auth (secret in URL is the auth token)
 	r.POST("/api/webhooks/:secret", handlers.HandleWebhook)
 
+	// Service templates (one-click deploys)
+	api.GET("/services/templates", handlers.GetServiceTemplates)
+	api.POST("/services", middleware.Auth(), handlers.CreateService)
+
 	// GitHub App push events (HMAC-verified, no auth header needed)
 	r.POST("/api/webhooks/github-app", handlers.HandleGitHubAppWebhook)
 

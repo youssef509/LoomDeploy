@@ -23,6 +23,7 @@ type SourceType string
 const (
 	SourceGit    SourceType = "git"
 	SourceUpload SourceType = "upload"
+	SourceImage  SourceType = "image"
 )
 
 type Project struct {
@@ -44,6 +45,8 @@ type Project struct {
 	MemoryLimitMB          int             `gorm:"column:memory_limit_mb;default:0" json:"memory_limit_mb"`
 	HealthCheckURL         string          `gorm:"column:health_check_url" json:"health_check_url,omitempty"`
 	DockerfileContent      string          `gorm:"column:dockerfile_content;type:text" json:"dockerfile_content,omitempty"`
+	DockerImage            string          `gorm:"column:docker_image" json:"docker_image,omitempty"`
+	VolumeMount            string          `gorm:"column:volume_mount" json:"volume_mount,omitempty"`
 	CreatedAt              time.Time       `json:"created_at"`
 	Deployments            []Deployment    `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"-"`
 	EnvVars                []EnvVar        `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"-"`

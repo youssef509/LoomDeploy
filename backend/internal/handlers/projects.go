@@ -475,6 +475,47 @@ func startDeployGoroutine(dep models.Deployment, project models.Project, envVars
 
 		database.DB.Model(&dep).Update("status", models.StatusBuilding)
 
+		if project.SourceType == models.SourceImage {
+			ctx := context.Background()
+			publish(fmt.Sprintf("Pulling image %s...\n", project.DockerImage))
+			if err := docker.PullImage(ctx, project.DockerImage, publish); err != nil {
+				publish(fmt.Sprintf("ERROR: image pull failed: %v\n", err))
+				return
+			}
+			publish("Image ready. Starting container...\n")
+
+			envSlice := make([]string, 0, len(envVars))
+			for _, e := range envVars {
+				envSlice = append(envSlice, fmt.Sprintf("%s=%s", e.Key, e.Value))
+			}
+			var extraDomains []models.ProjectDomain
+			database.DB.Where("project_id = ?", project.ID).Find(&extraDomains)
+			extraSlice := make([]string, 0, len(extraDomains))
+			for _, d := range extraDomains {
+				extraSlice = append(extraSlice, d.Domain)
+			}
+
+			cid, err := docker.RunContainer(ctx, docker.RunConfig{
+				ProjectID:     project.ID,
+				ImageTag:      project.DockerImage,
+				Domain:        project.Domain,
+				ExtraDomains:  extraSlice,
+				ContainerPort: project.ContainerPort,
+				EnvVars:       envSlice,
+				CPULimit:      project.CPULimit,
+				MemoryLimitMB: int64(project.MemoryLimitMB),
+				VolumeMount:   project.VolumeMount,
+			})
+			if err != nil {
+				publish(fmt.Sprintf("ERROR: container failed to start: %v\n", err))
+				return
+			}
+			containerID = cid
+			success = true
+			publish("Service is running!\n")
+			return
+		}
+
 		if project.SourceType == models.SourceGit {
 			token := project.GitToken
 			if token == "" {
