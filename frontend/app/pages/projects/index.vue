@@ -27,19 +27,17 @@ const serviceStep = ref<'grid' | 'form'>('grid')
 interface EnvVarField { key: string; label: string; placeholder: string; required: boolean; secret: boolean; default?: string }
 interface ServiceTemplate { id: string; name: string; description: string; icon: string; category: string; docker_image: string; versions: string[]; default_port: number; volume_mount?: string; env_var_fields: EnvVarField[] }
 
-const templates = ref<ServiceTemplate[]>([])
+const { data: templates } = await useAsyncData<ServiceTemplate[]>(
+  'service-templates',
+  () => $fetch('/api/services/templates'),
+  { default: () => [] as ServiceTemplate[] }
+)
 const selectedTemplate = ref<ServiceTemplate | null>(null)
 const serviceImage = ref('')
 const serviceVolumeEnabled = ref(true)
 const serviceName = ref('')
 const serviceEnvVars = ref<{ key: string; value: string; secret: boolean }[]>([])
 const serviceCreating = ref(false)
-
-async function loadTemplates() {
-  if (templates.value.length) return
-  try { templates.value = await $fetch<ServiceTemplate[]>('/api/services/templates') }
-  catch { templates.value = [] }
-}
 
 function selectTemplate(t: ServiceTemplate) {
   selectedTemplate.value = t
@@ -76,11 +74,15 @@ async function submitService() {
   }
 }
 
-const categoryColors: Record<string, string> = {
-  database: 'text-blue-400',
-  cache: 'text-red-400',
-  cms: 'text-purple-400',
-  storage: 'text-amber-400'
+const templateImages: Record<string, string> = {
+  postgres: '/one-click-services/postgresql.png',
+  mysql: '/one-click-services/mysql.png',
+  mariadb: '/one-click-services/mariadb.png',
+  redis: '/one-click-services/redis-white-1.webp',
+  mongodb: '/one-click-services/mongodb.png',
+  wordpress: '/one-click-services/wordpress.png',
+  ghost: '/one-click-services/ghost.png',
+  minio: '/one-click-services/MinIO.png'
 }
 
 // ── App (git) state ──────────────────────────────────────────────────────────
@@ -115,7 +117,6 @@ watch(isNewModalOpen, (open) => {
     selectedTemplate.value = null
     resetNewProject()
     sourceMode.value = ghConnected.value ? 'github' : 'git_url'
-    loadTemplates()
     if (ghConnected.value && ghRepos.value.length === 0) loadGhRepos()
   }
 })
@@ -513,13 +514,13 @@ const statusTextClass = (status?: string) => {
           <button
             v-for="t in templates"
             :key="t.id"
-            class="flex flex-col items-center gap-2 p-4 rounded-xl border border-default hover:border-primary/40 hover:bg-elevated transition-all text-center group"
+            class="flex flex-col rounded-xl border border-default hover:border-primary/40 hover:bg-elevated/60 transition-all text-center group overflow-hidden"
             @click="selectTemplate(t)"
           >
-            <div class="p-2 rounded-lg bg-elevated group-hover:bg-primary/10 transition-colors">
-              <UIcon :name="t.icon" class="size-6" :class="categoryColors[t.category] ?? 'text-muted'" />
+            <div class="flex items-center justify-center bg-elevated/40 group-hover:bg-elevated transition-colors pt-5 pb-4 px-4">
+              <img :src="templateImages[t.id]" :alt="t.name" class="w-14 h-14 object-contain drop-shadow-md" />
             </div>
-            <div>
+            <div class="px-3 py-2.5">
               <p class="text-sm font-semibold text-highlighted">{{ t.name }}</p>
               <p class="text-xs text-muted leading-tight mt-0.5">{{ t.description }}</p>
             </div>
@@ -539,7 +540,7 @@ const statusTextClass = (status?: string) => {
 
         <!-- Template header -->
         <div class="flex items-center gap-3 p-3 rounded-xl bg-elevated/60 border border-default">
-          <UIcon :name="selectedTemplate.icon" class="size-7" :class="categoryColors[selectedTemplate.category] ?? 'text-muted'" />
+          <img :src="templateImages[selectedTemplate.id]" :alt="selectedTemplate.name" class="size-8 object-contain" />
           <div>
             <p class="font-semibold text-sm text-highlighted">{{ selectedTemplate.name }}</p>
             <p class="text-xs text-muted">{{ selectedTemplate.description }}</p>

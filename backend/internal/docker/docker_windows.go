@@ -36,3 +36,11 @@ func StreamLogs(_ context.Context, _ string) (io.ReadCloser, error) {
 func RemoveImage(_ context.Context, _ string) {}
 
 func GetRunningContainerCount(_ context.Context) (int, int) { return 0, 0 }
+
+func PullImage(_ context.Context, _ string, _ func(string)) error {
+	return fmt.Errorf("Docker not available on Windows build")
+}
+
+func GetContainerStats(_ context.Context, _ string) (*ContainerUsage, error) {
+	return nil, fmt.Errorf("Docker not available on Windows build")
+}

@@ -21,6 +21,13 @@ MemoryLimitMB int64
 VolumeMount   string   // container path to persist (host path auto-derived)
 }
 
+type ContainerUsage struct {
+	CPUPercent    float64 `json:"cpu_percent"`
+	MemoryUsageMB float64 `json:"memory_usage_mb"`
+	MemoryLimitMB float64 `json:"memory_limit_mb"`
+	MemoryPercent float64 `json:"memory_percent"`
+}
+
 func TagForProject(projectID string) string {
 return fmt.Sprintf("ld_img_%s:latest", strings.ToLower(projectID))
 }
